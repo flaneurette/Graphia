@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
     <html lang="en">
     <head>
     <meta charset="UTF-8">
@@ -200,7 +200,7 @@
         padding: 3px 12px; font-size: 11px; color: #888;
         display: flex; gap: 20px;
     }
-    .layer-item.selected { background: #005fa3; color: #fff; }
+    .layer-item.selected { background: #1d6633; color: #fff; }
     .option-sep {
         background-color:#fff;
         color:#000;
@@ -1036,10 +1036,13 @@
         if (!shapeData) return;
         const template = shapeData.points;
     
-        const scale = 25;
         const layer = this.activeLayer;
-        const x = 500 - layer.x;
-        const y = 300 - layer.y;
+        const canvasW = this.mainCanvas.width;
+        const canvasH = this.mainCanvas.height;
+        const shapeDiameter = 20; // template points span roughly 0-20 units (centered at 10, radius ~9-10)
+        const scale = (Math.min(canvasW, canvasH) * 0.7) / shapeDiameter;
+        const x = canvasW / 2 - layer.x;
+        const y = canvasH / 2 - layer.y;
     
         const pts = template.map(point => ({
             x: x + (point.x - 10) * scale,
@@ -2152,23 +2155,25 @@
 
         _mergeLayers() {
             this.saveState();
+            this._render();
             const w = this.mainCanvas.width;
             const h = this.mainCanvas.height;
             const merged = new Layer(w, h, 'Merged');
             this.layers.forEach(l => {
                 if (!l.visible) return;
                 merged.ctx.save();
-                const cx = l.x + l.canvas.width  / 2;
-                const cy = l.y + l.canvas.height / 2;
-                merged.ctx.translate(cx, cy);
-                merged.ctx.rotate(l.rotation);
-                merged.ctx.drawImage(l.canvas, -l.canvas.width / 2, -l.canvas.height / 2);
+                merged.ctx.translate(l.x, l.y);
+                if (l.rotation) {
+                    merged.ctx.rotate(l.rotation);
+                }
+                merged.ctx.globalAlpha = (l.opacity ?? 1);
+                merged.ctx.drawImage(l.canvas, 0, 0);
                 merged.ctx.restore();
             });
             this.layers    = [merged];
             this.activeIdx = 0;
             this._refreshLayersPanel();
-            this._render();
+            
         }
        
         _startContinuousRotate(direction='left', delta=0.1) {
@@ -3695,6 +3700,10 @@
             const w = parseInt(document.getElementById('inputW').value);
             const h = parseInt(document.getElementById('inputH').value);
             if (w > 0 && h > 0) this._resizeCanvas(w, h);
+            
+            // reset presetbox
+            const selectElement = document.getElementById('presetSize');
+            selectElement.options[0].selected = true;
         });
 
         document.getElementById('presetSize').addEventListener('change', (e) => {
@@ -3847,13 +3856,13 @@
             // Save merged layer context
             mergedLayer.ctx.save();
             
-            // Position and rotate the layer correctly
-            mergedLayer.ctx.translate(layer.x + layer.canvas.width / 2,
-            layer.y + layer.canvas.height / 2);
-            mergedLayer.ctx.rotate(layer.rotation);
-            mergedLayer.ctx.drawImage(layer.canvas,
-            -layer.canvas.width / 2,
-            -layer.canvas.height / 2);
+            // Position, rotate, and apply opacity exactly as _render() does
+            mergedLayer.ctx.translate(layer.x, layer.y);
+            if (layer.rotation) {
+                mergedLayer.ctx.rotate(layer.rotation);
+            }
+            mergedLayer.ctx.globalAlpha = (layer.opacity ?? 1);
+            mergedLayer.ctx.drawImage(layer.canvas, 0, 0);
             
             mergedLayer.ctx.restore();
         });
