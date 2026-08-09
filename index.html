@@ -1628,6 +1628,8 @@
         // Resize all layers
         if (percent) {
             this.layers.forEach(l => this._resizeLayerPercent(l, percent));
+            } else {
+            this.layers.forEach(l => this._resizeLayer(l, cw, ch));
         }
     
         document.getElementById('statusSize').textContent = `Canvas: ${cw} × ${ch}`;
@@ -3405,6 +3407,25 @@
     }
 
 
+    _resizeLayer(layer, w, h) {
+        this.saveState();
+        const tempCanvas = document.createElement('canvas');
+        const originalWidth = layer.canvas.width;
+        const originalHeight = layer.canvas.height;
+        tempCanvas.width = originalWidth;
+        tempCanvas.height = originalHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(layer.canvas, 0, 0);
+
+        layer.canvas.width = w;
+        layer.canvas.height = h;
+        layer.ctx = layer.canvas.getContext('2d');
+        
+        layer.ctx.drawImage(tempCanvas, 0, 0, w, h);
+        
+        this._render();
+    }
+    
     _resizeLayerPercent(layer, percent) {
         this.saveState();
         
