@@ -248,7 +248,7 @@
         z-index: 999;
         position: absolute;
         left: 16px;
-        top: 99px;
+        top: 119px;
         border-radius: 5px;
         background-color: #2e2d2d;
         padding: 3px;
@@ -323,6 +323,68 @@
         top: 4px;
     }
 
+    /* DOCUMENT TABS */
+    .tab-bar {
+        display: flex;
+        align-items: stretch;
+        background: #2e2e2e;
+        border-bottom: 1px solid #222;
+        flex-shrink: 0;
+    }
+    #tabs {
+        display: flex;
+        flex: 1;
+        overflow-x: auto;
+    }
+    .tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        background: #333;
+        border-right: 1px solid #222;
+        color: #999;
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        flex: 0 0 auto;
+        max-width: 160px;
+    }
+    .tab:hover { background: #3d3d3d; }
+    .tab.tabfocus { background: #0078d7; color: #fff; }
+    .tab .tabName {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+    }
+    .tab .tabClose {
+        background: transparent;
+        border: none;
+        color: inherit;
+        opacity: 0.7;
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 1;
+        padding: 2px 4px;
+    }
+    .tab .tabClose:hover { opacity: 1; color: #f88; }
+    #add-tab {
+        cursor: pointer;
+        width: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ccc;
+        font-size: 16px;
+        flex-shrink: 0;
+        border-right: 1px solid #222;
+    }
+    #add-tab:hover { background: #3d3d3d; }
+
+  
+
+  
     </style>
     </head>
     <body>
@@ -502,12 +564,20 @@
 
     </div>
 
+    <!-- DOCUMENT TABS -->
+    <div class="tab-bar" id="tab-bar">
+        <div id="tabs"></div>
+        <div id="add-tab" title="New document">+</div>
+    </div>
+
     <!-- MIDDLE -->
     <div class="middle-row">
 
     <!-- WORK AREA -->
     <div class="workarea-column">
-    <div class="workarea-bar" style="margin-left:15px;">
+    
+    <div class="workarea-bar">
+    
     <span>Canvas size:</span>
     <input type="text" id="inputW" value="1200" min="1" max="8000">
     <span>×</span>
@@ -574,8 +644,10 @@
         <label for="ux-contrast">Contrast:</label>  <input type="checkbox" name="ux-contrast" id="ux-contrast" />
         </div>
     </div>
-    <div class="canvas-scroll" id="canvasScroll">
-    <div class="canvas-wrapper" id="canvasWrapper">
+  <div class="canvas-scroll" id="canvasScroll">
+
+  <div class="canvas-wrapper" id="canvasWrapper">
+
     <canvas id="main-canvas" width="1200" height="700"></canvas>
     </div>
     </div>
@@ -815,6 +887,12 @@
 
             this.layers    = [];
             this.activeIdx = -1;
+
+            // Documents (tabs) — each tab is an independent canvas/document
+            this.documents    = [];
+            this.activeDocIdx = -1;
+            this.docCount     = 0;
+
             this.tool      = 'pointer';
             this.color     = '#000000';
             this.quality   = 1.0;
@@ -1004,13 +1082,170 @@
     get activeLayer() { return this.layers[this.activeIdx] || null; }
 
     _init() {
-        this._addLayer('Background');
         this._bindToolbar();
         this._bindCanvas();
         this._bindKeys();
         this._bindUI();
+        this._bindTabs();
+        this._newDocument('Untitled-1');
         this._render();
     }
+
+    /* ---------------- DOCUMENT / TAB MANAGEMENT ---------------- */
+
+    _bindTabs() {
+        document.getElementById('add-tab').addEventListener('click', () => {
+            this.docCount++;
+            this._newDocument(`Untitled-${this.docCount + 1}`);
+        });
+    }
+
+    // Snapshot the live editor state back into the currently active document object
+    _saveActiveDocState() {
+        if (this.activeDocIdx < 0 || !this.documents[this.activeDocIdx]) return;
+        const doc = this.documents[this.activeDocIdx];
+        doc.layers        = this.layers;
+        doc.activeIdx      = this.activeIdx;
+        doc.undoStack       = this.undoStack;
+        doc.zoomLevel       = this.zoomLevel;
+        doc.width           = this.mainCanvas.width;
+        doc.height          = this.mainCanvas.height;
+        doc.selectedLayers  = this.selectedLayers;
+    }
+
+    // Create a brand-new blank document, add its tab, and switch to it
+    _newDocument(name) {
+        this.docCount++;
+        this._saveActiveDocState();
+
+        const w = 1200, h = 700;
+        const doc = {
+            id: `doc${this.docCount}`,
+            name: name || `Untitled-${this.docCount}`,
+            layers: [],
+            activeIdx: -1,
+            undoStack: [],
+            zoomLevel: 1.0,
+            width: w,
+            height: h,
+            selectedLayers: []
+        };
+
+        this.documents.push(doc);
+        this.activeDocIdx = this.documents.length - 1;
+
+        // Load it as the live state, then give it its background layer
+        this.layers = doc.layers;
+        this.activeIdx = doc.activeIdx;
+        this.undoStack = doc.undoStack;
+        this.zoomLevel = doc.zoomLevel;
+        this.selectedLayers = doc.selectedLayers;
+        this.mainCanvas.width = w;
+        this.mainCanvas.height = h;
+
+        this._addLayer('Background');
+        doc.layers = this.layers;
+        doc.activeIdx = this.activeIdx;
+
+        this._refreshTabsUI();
+        this._refreshLayersPanel();
+        this._updateCanvasSizeUI();
+        this._render();
+    }
+
+    // Switch the live editor state to a different document/tab
+    _switchToDoc(idx) {
+        if (idx === this.activeDocIdx) return;
+        if (idx < 0 || idx >= this.documents.length) return;
+
+        this._saveActiveDocState();
+
+        const doc = this.documents[idx];
+        this.activeDocIdx = idx;
+        this.layers = doc.layers;
+        this.activeIdx = doc.activeIdx;
+        this.undoStack = doc.undoStack;
+        this.zoomLevel = doc.zoomLevel;
+        this.selectedLayers = doc.selectedLayers || [];
+        this.mainCanvas.width = doc.width;
+        this.mainCanvas.height = doc.height;
+
+        this.sel = null;
+        this.selCircle = null;
+        this.currentSelection = null;
+        this.magicWandSelection = null;
+
+        this._refreshTabsUI();
+        this._refreshLayersPanel();
+        this._updateCanvasSizeUI();
+        this._render();
+    }
+
+    _closeDocument(idx) {
+        if (this.documents.length <= 1) return; // always keep at least one document open
+
+        const wasActive = idx === this.activeDocIdx;
+        this.documents.splice(idx, 1);
+
+        if (wasActive) {
+            const newIdx = Math.min(idx, this.documents.length - 1);
+            this.activeDocIdx = -1; // force a full switch (nothing to save back into)
+            this._switchToDoc(newIdx);
+        } else {
+            if (idx < this.activeDocIdx) this.activeDocIdx--;
+            this._refreshTabsUI();
+        }
+    }
+
+    _updateCanvasSizeUI() {
+        document.getElementById('inputW').value = this.mainCanvas.width;
+        document.getElementById('inputH').value = this.mainCanvas.height;
+        document.getElementById('statusSize').textContent = `Canvas: ${this.mainCanvas.width} × ${this.mainCanvas.height}`;
+
+        const maxThumbWidth = 600;
+        const ratio = this.mainCanvas.width / this.mainCanvas.height;
+        const thumbWidth = Math.min(maxThumbWidth, this.mainCanvas.width);
+        const thumbHeight = Math.floor(thumbWidth / ratio);
+        this.thumbCanvas.width = thumbWidth;
+        this.thumbCanvas.height = thumbHeight;
+        document.getElementById('thumbnail-box').style.height = thumbWidth / 5;
+        document.getElementById('thumbnail-box').style.width = thumbWidth / 5;
+        document.getElementById('thumbnail-canvas').style.width = thumbWidth / 5;
+        document.getElementById('thumbnail-canvas').style.height = (thumbHeight / 5) - 5;
+    }
+
+    _refreshTabsUI() {
+        const tabsEl = document.getElementById('tabs');
+        tabsEl.innerHTML = '';
+
+        this.documents.forEach((doc, idx) => {
+            const tab = document.createElement('div');
+            tab.className = 'tab' + (idx === this.activeDocIdx ? ' tabfocus' : '');
+            tab.title = doc.name;
+
+            const nameEl = document.createElement('span');
+            nameEl.className = 'tabName';
+            nameEl.textContent = doc.name;
+            nameEl.addEventListener('click', () => this._switchToDoc(idx));
+
+            const closeEl = document.createElement('button');
+            closeEl.className = 'tabClose';
+            closeEl.textContent = '×';
+            closeEl.title = 'Close document';
+            closeEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._closeDocument(idx);
+            });
+
+            tab.appendChild(nameEl);
+            tab.appendChild(closeEl);
+            tab.addEventListener('click', () => this._switchToDoc(idx));
+
+            tabsEl.appendChild(tab);
+        });
+    }
+
+    /* -------------------------------------------------------------- */
 
     handleMagicWandClick(x, y) {
         this.currentSelection = this.magicWand.select(x, y);
