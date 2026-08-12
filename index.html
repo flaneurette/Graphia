@@ -247,8 +247,8 @@
     #dock {
         z-index: 999;
         position: absolute;
-        left: 16px;
-        top: 119px;
+        left: 6px;
+        top: 85px;
         border-radius: 5px;
         background-color: #2e2d2d;
         padding: 3px;
@@ -332,8 +332,8 @@
         border-bottom: 1px solid #222;
         flex-shrink: 0;
         position: absolute;
-        left: 16px;
-        top: 469px;
+        left: 104px;
+        top: 86px;
     }
     #tabs {
         display: inline;
@@ -391,8 +391,8 @@
       z-index:9999;
       border:0px solid #ff0;
       position:absolute;
-      right: 300px;
-      top: 129px;
+      right: 212px;
+      top: 89px;
       max-width:600px;
     }
     </style>
@@ -2581,7 +2581,8 @@
         // center canvas by default
         document.getElementById('canvasWrapper').style.margin = '0 auto';
         document.getElementById('thumbnail-canvas').style.display = 'block';
-        document.getElementById('canvasWrapper').style.left = '-111px';
+        document.getElementById('canvasWrapper').style.left = '-223px';
+        document.getElementById('canvasWrapper').style.top = '-12px';
 
         const cv = this.mainCanvas;
         cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -2592,10 +2593,12 @@
             let alignCanvas = document.getElementById('align-canvas');
                 if(alignCanvas.checked != true) {
                 document.getElementById('canvasWrapper').style.margin = '0';
-                document.getElementById('canvasWrapper').style.left = '111px';
+                document.getElementById('canvasWrapper').style.left = '223px';
+                document.getElementById('canvasWrapper').style.top = '-12px';
                 } else {
                 document.getElementById('canvasWrapper').style.margin = '0 auto';
-                document.getElementById('canvasWrapper').style.left = '-111px';
+                document.getElementById('canvasWrapper').style.left = '-223px';
+                document.getElementById('canvasWrapper').style.top = '-12px';
                 }  
         });
 
