@@ -1,6 +1,6 @@
 # Graphia Photo editor
 
-<img src="Screenshot.png" />
+<img src="Preview.png" />
 
 [![Try it live](https://img.shields.io/badge/Try%20it-Live-brightgreen)](https://flaneurette.github.io/Graphia/)
 
