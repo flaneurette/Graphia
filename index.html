@@ -276,14 +276,14 @@
         display: none;
         color: #ddd;
         font-size: 12px;
-        height:30px;
     }
     #dock .color-picker {
-        width: 22px;
-        height: 23px;
         border: none;
         cursor: pointer;
         background: none;
+        margin: 10px;
+        margin-bottom: 20px;
+        font-size: 14px;
     }
 
     #dock label {
@@ -291,15 +291,16 @@
     }
 
     #dock select, #dock input[type="text"], #dock input[type="number"]  {
-        line-height: 22px;
-        top: -4px;
-        position: relative;
         background: #333;
         border: 0px solid #666;
         border-radius: 4px;
         color: #ddd;
         outline: none;
+        margin: 10px;
+        margin-bottom: 20px;
+        font-size: 14px;
     }
+    
     #wand-dock-tolerance {
             top: 2px !important;
             position: relative;
@@ -414,8 +415,9 @@
                 <option value="3">Spray</option>
                 <option value="4">Rand</option>
             </select>
+            <br />
             <select name="brushsize" title="Brush size" id="brushsize-dock">
-                <option value="0">Select</option>
+                <option value="0">Size:</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3">3</option>
@@ -439,24 +441,25 @@
                 <option value="30">30</option>
                 <option value="40">40</option>
                 <option value="50">50</option>
-            </select>
+            </select> <br />
             <input type="color" id="brushcolor-dock" class="color-picker" value="#000000">
+             <br />
         </div>
 
         <div class="dock-item" data-tool="wand" title="Magic wand">Wand</div>
         <div id="dock-wand">
-        <label>Tolerance:</label>
+        <label>Tolerance:</label><br />
         <input type="text" id="wand-dock-tolerance" min="0" max="150" value="20">
         </div>
         <div class="dock-item" data-tool="select" title="Rect Select (S)">Rectangle</div>
         <div class="dock-item" data-tool="selectcircle"  title="Ellipse Select (C)">Ellipse</div>
         <div class="dock-item" data-tool="eraser" title="Eraser (E)">Eraser</div>
         <div id="dock-eraser">
-        <label>Size:</label>
+        <label>Size:</label><br />
         <input type="text" id="eraser-dock-size" value="5">
         </div>
         <div class="dock-item" data-tool="fill"  title="Fill (F)">Fill</div>
-        <div id="dock-fill">
+        <div id="dock-fill"><br />
             <label>Color: </label><input type="color" id="dock-fill-picker" class="color-picker" value="#000000">
         </div>
         <div class="dock-item" data-tool="text" title="Text (T)">Text</div>
