@@ -554,6 +554,7 @@
         <option value="ricepaper">Fine rice paper</option>
         <option value="thinlines">Thin lines</option>
         <option value="lines">Ruled lines</option>
+        <option value="collage">Art: Collage</option>
         <option value="confetti">Art: Confetti small</option>
         <option value="confetti2">Art: Confetti Large</option>
         <option value="laminate">Art: Laminate</option>
@@ -3109,6 +3110,9 @@
             case 'brushed':
             this._paper('brushed',layer);
             break;
+            case 'collage':
+            this._collage(layer);
+            break;              
             case 'waves':
             this._waves(layer, 'sin', 10, 0.05);
             break;
@@ -3329,6 +3333,134 @@
         l.ctx.restore();
     }
 
+    _collage(l) {
+        l.ctx.save();
+        const canvas = l.ctx.canvas;
+        l.ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const layerCount = Math.floor(Math.random() * 10) + 1;
+
+        for (let i = 0; i < layerCount; i++) {
+            this._addLayer('Col: ' + i);
+            let layer = this.activeLayer;
+
+            const cx = Math.random() * canvas.width;
+            const cy = Math.random() * canvas.height;
+            const size = 20 + Math.random() * (Math.max(canvas.width, canvas.height) * 0.5);
+            const rotation = Math.random() * Math.PI * 2;
+            const alpha = Math.random() * 0.7 + 0.2;
+
+            layer.ctx.save();
+            layer.ctx.translate(cx - layer.x, cy - layer.y);
+            layer.ctx.rotate(rotation);
+
+            this._randomShapePath(layer.ctx, size);
+            layer.ctx.clip();
+
+            layer.ctx.globalAlpha = alpha;
+            layer.ctx.fillStyle = this._getRandomSaturatedColor();
+            // fillRect needs to cover full layer regardless of translate/rotate,
+            // so reset transform for the fill only:
+            layer.ctx.setTransform(1, 0, 0, 1, 0, 0);
+            layer.ctx.fillRect(0, 0, layer.canvas.width, layer.canvas.height);
+            layer.ctx.restore();
+
+            layer.opacity = alpha;
+
+            const amplitude = Math.floor(Math.random() * 4) + 5;
+            const frequency = 0.02 + Math.random() * 0.01;
+            this._waves(layer, Math.random() < 0.5 ? 'sin' : 'cos', amplitude, frequency);
+        }
+
+        l.ctx.restore();
+    }
+
+    // Picks a random shape type and builds its path centered at (0,0)
+    // Assumes ctx is already translated/rotated to the shape's center.
+    _randomShapePath(ctx, size) {
+    
+        const shapeType = Math.floor(Math.random() * 5); // 0-4
+
+        ctx.beginPath();
+
+        switch (shapeType) {
+            case 0: // Ellipse
+                this._pathEllipse(ctx, size);
+                break;
+            case 1: // Rectangle (possibly non-square)
+                this._pathRect(ctx, size);
+                break;
+            case 2: // Triangle
+                this._pathPolygon(ctx, size, 3);
+                break;
+            case 3: // Random polygon (5-9 sides)
+                this._pathPolygon(ctx, size, 5 + Math.floor(Math.random() * 5));
+                break;
+            case 4: // Irregular blob
+                this._pathBlob(ctx, size);
+                break;
+        }
+    }
+
+    _pathEllipse(ctx, size) {
+        const rx = size * (0.5 + Math.random() * 0.5);
+        const ry = size * (0.5 + Math.random() * 0.5);
+        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    }
+
+    _pathRect(ctx, size) {
+        const w = size * (0.6 + Math.random() * 0.8);
+        const h = size * (0.6 + Math.random() * 0.8);
+        ctx.rect(-w / 2, -h / 2, w, h);
+    }
+
+    // Regular-ish polygon with some radius jitter per vertex for organic look
+    _pathPolygon(ctx, size, sides) {
+        const baseR = size * 0.5;
+        for (let s = 0; s < sides; s++) {
+            const angle = (Math.PI * 2 * s) / sides;
+            const jitter = 0.75 + Math.random() * 0.5; // 0.75-1.25 radius variance
+            const r = baseR * jitter;
+            const x = Math.cos(angle) * r;
+            const y = Math.sin(angle) * r;
+            if (s === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+    }
+
+    // Smooth organic blob using many points + quadratic curves
+    _pathBlob(ctx, size) {
+        const points = 8 + Math.floor(Math.random() * 5); // 8-12 points
+        const baseR = size * 0.5;
+        const radii = [];
+
+        for (let p = 0; p < points; p++) {
+            radii.push(baseR * (0.6 + Math.random() * 0.6));
+        }
+
+        const angleStep = (Math.PI * 2) / points;
+
+        const getPoint = (idx) => {
+            const angle = angleStep * idx;
+            const r = radii[idx % points];
+            return [Math.cos(angle) * r, Math.sin(angle) * r];
+        };
+
+        let [startX, startY] = getPoint(0);
+        ctx.moveTo(startX, startY);
+
+        for (let p = 0; p < points; p++) {
+            const [cx1, cy1] = getPoint(p);
+            const [cx2, cy2] = getPoint(p + 1);
+            // midpoint for smooth curve control
+            const mx = (cx1 + cx2) / 2;
+            const my = (cy1 + cy2) / 2;
+            ctx.quadraticCurveTo(cx1, cy1, mx, my);
+        }
+        ctx.closePath();
+    }
+    
     _paper(method, l, amplitude = 10, frequency = 0.05) {
         l.ctx.save();
         const canvas = l.ctx.canvas;
@@ -3701,7 +3833,53 @@
         
         this._render();
     }
+    
+  _getRandomSaturatedColor() {
+        // Generate random hue (0-360)
+        const hue = Math.floor(Math.random() * 360);
 
+        // Set high saturation and value (brightness) for vivid colors
+        const saturation = 90 + Math.floor(Math.random() * 10); // 90-100%
+        const value = 90 + Math.floor(Math.random() * 10);      // 90-100%
+
+        // Convert HSV to RGB
+        const rgb = this._hsvToRgb(hue, saturation, value);
+
+        return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+    }
+
+    // Helper function to convert HSV to RGB
+   _hsvToRgb(h, s, v) {
+        s /= 100;
+        v /= 100;
+
+        const c = v * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = v - c;
+
+        let r = 0, g = 0, b = 0;
+
+        if (0 <= h && h < 60) {
+            r = c; g = x; b = 0;
+        } else if (60 <= h && h < 120) {
+            r = x; g = c; b = 0;
+        } else if (120 <= h && h < 180) {
+            r = 0; g = c; b = x;
+        } else if (180 <= h && h < 240) {
+            r = 0; g = x; b = c;
+        } else if (240 <= h && h < 300) {
+            r = x; g = 0; b = c;
+        } else if (300 <= h && h < 360) {
+            r = c; g = 0; b = x;
+        }
+
+        r = Math.round((r + m) * 255);
+        g = Math.round((g + m) * 255);
+        b = Math.round((b + m) * 255);
+
+        return { r, g, b };
+    }
+    
     _applyCSS() {
         this.saveState();
         const csscode = document.getElementById('cssInput').value.trim();
