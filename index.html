@@ -571,7 +571,7 @@
         <option value="sawtooth">Sawtooth</option>
     </select>
     <!-- <button class="tb-btn" id="btnEffectsEditor" title="Open effect editor">Effect editor</button> -->
-
+    <button class="tb-btn" id="regenerate" onclick="Editor._effects();" title="Apply or regenerate layer effect">Apply</button> 
     <div class="toolbar-sep"></div>
     <select id="shapeDropdown">
       <option value="">-- Shapes --</option>
@@ -4078,7 +4078,11 @@
     document.getElementById('effects').addEventListener('change', () => {
         this._effects();
     });
-
+    
+    document.getElementById('regenerate').addEventListener('click', () => {
+        this._effects();
+    });
+    
     document.getElementById('replaceColorFrom').addEventListener('input', () => this._updateReplaceColorPreview());
     document.getElementById('replaceColorTo').addEventListener('input', () => this._updateReplaceColorPreview());
     document.getElementById('replaceColorKeepAlpha').addEventListener('change', () => this._updateReplaceColorPreview());
