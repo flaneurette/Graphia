@@ -1331,8 +1331,6 @@
         const layer = this.activeLayer;
         this.lastPos = layer ? { x: x - layer.x, y: y - layer.y } : { x, y };
 
-        // Straight-line (Shift) mode bookkeeping: anchor point for the current
-        // straight segment, and a pixel snapshot to restore before each preview redraw.
         this.straightLineAnchor = { ...this.lastPos };
         this._prevShiftKey = this.shiftKey;
         if (layer) {
@@ -1341,14 +1339,8 @@
             this._strokeSnapshot = null;
         }
 
-        // Freehand curve-smoothing: rolling buffer of recent points used to draw
-        // quadratic curves through midpoints instead of jagged straight segments.
         this._smoothPoints = [{ ...this.lastPos }];
 
-        // Pressure smoothing: many pen digitizers report an unreliable pressure
-        // spike on the very first contact sample (before the reading settles),
-        // which is what causes an oversized first dot. Flag it so draw() can
-        // discard that first sample and ease into real pressure readings.
         this._firstPressureSample = true;
         this._smoothedPressure = 0.5;
 
@@ -1365,10 +1357,6 @@
         const { x: cx, y: cy } = this._canvasXY(e);
         const x = cx - layer.x, y = cy - layer.y;
 
-        // If Shift was just pressed or released, "re-anchor" straight-line mode
-        // to wherever the pointer currently is, and snapshot the canvas as it
-        // stands right now (so freehand drawn before/after a straight segment
-        // is never lost, and a new straight segment always starts fresh).
         if (this.shiftKey !== this._prevShiftKey) {
             this.straightLineAnchor = { ...this.lastPos };
             this._strokeSnapshot = ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height);
@@ -1413,18 +1401,8 @@
 
         const { brushType, brushColor, brushSize } = syncBrushSettings();
 
-        // Pressure sensitivity: PointerEvent.pressure is 0–1 for pen/stylus/
-        // force-touch input, and a fixed 0.5 for a plain mouse (per spec) while
-        // a button is held. Mapping 0.5 -> 1x keeps mouse strokes exactly the
-        // same width as before; a stylus can go thinner (light touch) or
-        // thicker (hard press) than the base brush size.
         let rawPressure = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0.5;
 
-        // Discard the very first contact sample — many digitizers report a
-        // brief, unreliable pressure spike right at touch-down — and use a
-        // neutral value for it instead. Every sample after that is smoothed
-        // (rather than applied instantly) so pressure eases in instead of
-        // jumping, giving a natural taper rather than sudden width changes.
         if (this._firstPressureSample) {
             rawPressure = 0.5;
             this._firstPressureSample = false;
@@ -1435,9 +1413,6 @@
         const pressure = this._smoothedPressure;
         const pressureWidth = Math.max(1, brushSize * (0.4 + pressure * 1.2));
 
-        // Straight-line mode: while Shift is held, continuously redraw a single
-        // straight line from the anchor point to the current cursor position
-        // instead of baking every jittery mouse-move segment permanently.
         if (this.shiftKey) {
             ctx.putImageData(this._strokeSnapshot, 0, 0);
             ctx.beginPath();
@@ -1456,9 +1431,6 @@
         switch(brushType) {
             case '1':
             case '2': {
-                // Smooth the freehand line by drawing a quadratic curve through the
-                // midpoints of the last 3 points, instead of a straight segment per
-                // mouse-move (which is what makes hand tremor look jagged/faceted).
                 this._smoothPoints.push({ x, y });
                 if (this._smoothPoints.length > 3) this._smoothPoints.shift();
 
@@ -1476,8 +1448,6 @@
                     ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
                     ctx.stroke();
                 } else {
-                    // Not enough points buffered yet (start of stroke) — draw a
-                    // straight segment so the line starts immediately, no lag.
                     ctx.beginPath();
                     ctx.moveTo(this.lastPos.x, this.lastPos.y);
                     ctx.lineTo(x, y);
@@ -1613,8 +1583,6 @@
         const list = document.getElementById('layersList');
         list.innerHTML = '';
         
-        // Display the top-most layer (highest index, drawn last / on top) first,
-        // so the panel's visual order matches the on-canvas stacking order.
         for (let idx = this.layers.length - 1; idx >= 0; idx--) {
         const layer = this.layers[idx];
         const item = document.createElement('div');
@@ -1629,8 +1597,6 @@
         item.classList.add('selected');
     }
 
-    // Clicking anywhere on the row selects the layer (not just the name text).
-    // Plain click = single select. Ctrl/Cmd+click = toggle in multi-select.
     item.addEventListener('click', (e) => {
         if (e.ctrlKey || e.metaKey) {
             const pos = this.selectedLayers.indexOf(idx);
@@ -1766,9 +1732,7 @@
             const dy = endY - startY;
             
             if (Math.abs(dy) > 10) {
-                // The panel lists the top of the stack first, so dragging a row
-                // up on screen means moving it toward the top of the stack
-                // (a higher index in this.layers), and vice versa.
+
                 const targetIdx = dy < 0 ? dragIdx + 1 : dragIdx - 1;
                 if (targetIdx >= 0 && targetIdx < this.layers.length) {
                     this._moveLayerTo(dragIdx, targetIdx);
@@ -1951,8 +1915,6 @@
         }
     
         // Calculate proportional thumbnail dimensions
-        // Use the canvas's actual current dimensions rather than the raw
-        // w/h arguments, since those are (0, 0) on the percent-resize path.
         const cw = this.mainCanvas.width;
         const ch = this.mainCanvas.height;
         const maxThumbWidth = 600; // Your desired max thumbnail width
