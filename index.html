@@ -3417,9 +3417,9 @@
         const canvas = l.ctx.canvas;
         l.ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const layerCount = Math.floor(Math.random() * 10) + 1;
+        const layerCount = Math.floor(Math.random() * 15) + 1;
 
-        for (let i = 0; i < layerCount; i++) {
+        for (let i = 4; i < layerCount; i++) {
             this._addLayer('Col: ' + i);
             let layer = this.activeLayer;
 
