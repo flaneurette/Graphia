@@ -248,7 +248,7 @@
         z-index: 999;
         position: absolute;
         left: 6px;
-        top: 85px;
+        top: 114px;
         border-radius: 5px;
         background-color: #2e2d2d;
         padding: 3px;
@@ -332,13 +332,9 @@
         background: #2e2e2e;
         border-bottom: 1px solid #222;
         flex-shrink: 0;
-        position: absolute;
-        left: 104px;
-        top: 86px;
-        z-index:9999;
     }
     #tabs {
-        display: inline;
+        display: flex;
         overflow-x: auto;
     }
     .tab {
@@ -393,10 +389,12 @@
       z-index:9999;
       border:0px solid #ff0;
       position:absolute;
-      right: 212px;
-      top: 89px;
+      right: 231px;
+      top: 136px;
       max-width:600px;
     }
+
+    
     </style>
     </head>
     <body>
@@ -654,6 +652,7 @@
         <div style="margin-left: auto;">
         UX:
         <label for="show-toolbox">Toolbox:</label> <input type="checkbox" name="show-toolbox" id="show-toolbox" checked />
+        <label for="ux-tabs">Tabs:</label>  <input type="checkbox" name="ux-tabs" id="ux-tabs" checked />
         <label for="align-canvas">Centered:</label> <input type="checkbox" name="align-canvas" id="align-canvas" checked />
         <label for="preview-canvas">Preview:</label>  <input type="checkbox" name="preview-canvas" id="preview-canvas" checked />
         <label for="ux-contrast">Contrast:</label>  <input type="checkbox" name="ux-contrast" id="ux-contrast" />
@@ -1091,6 +1090,7 @@
             this.lastX = null;
             this.lastY = null; 
             this.speed = 0.001;
+            this.shiftKey = false; // tracks whether Shift is currently held, used for straight-line brush strokes
             this._init();
     }
 
@@ -1330,6 +1330,28 @@
         this.tool = 'brush';
         const layer = this.activeLayer;
         this.lastPos = layer ? { x: x - layer.x, y: y - layer.y } : { x, y };
+
+        // Straight-line (Shift) mode bookkeeping: anchor point for the current
+        // straight segment, and a pixel snapshot to restore before each preview redraw.
+        this.straightLineAnchor = { ...this.lastPos };
+        this._prevShiftKey = this.shiftKey;
+        if (layer) {
+            this._strokeSnapshot = layer.ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height);
+        } else {
+            this._strokeSnapshot = null;
+        }
+
+        // Freehand curve-smoothing: rolling buffer of recent points used to draw
+        // quadratic curves through midpoints instead of jagged straight segments.
+        this._smoothPoints = [{ ...this.lastPos }];
+
+        // Pressure smoothing: many pen digitizers report an unreliable pressure
+        // spike on the very first contact sample (before the reading settles),
+        // which is what causes an oversized first dot. Flag it so draw() can
+        // discard that first sample and ease into real pressure readings.
+        this._firstPressureSample = true;
+        this._smoothedPressure = 0.5;
+
         this.draw(e);
     }
     
@@ -1342,6 +1364,17 @@
         const ctx = layer.ctx;
         const { x: cx, y: cy } = this._canvasXY(e);
         const x = cx - layer.x, y = cy - layer.y;
+
+        // If Shift was just pressed or released, "re-anchor" straight-line mode
+        // to wherever the pointer currently is, and snapshot the canvas as it
+        // stands right now (so freehand drawn before/after a straight segment
+        // is never lost, and a new straight segment always starts fresh).
+        if (this.shiftKey !== this._prevShiftKey) {
+            this.straightLineAnchor = { ...this.lastPos };
+            this._strokeSnapshot = ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height);
+            this._prevShiftKey = this.shiftKey;
+            this._smoothPoints = [{ ...this.lastPos }];
+        }
 
         function syncBrushSettings() {
 
@@ -1380,25 +1413,78 @@
 
         const { brushType, brushColor, brushSize } = syncBrushSettings();
 
+        // Pressure sensitivity: PointerEvent.pressure is 0–1 for pen/stylus/
+        // force-touch input, and a fixed 0.5 for a plain mouse (per spec) while
+        // a button is held. Mapping 0.5 -> 1x keeps mouse strokes exactly the
+        // same width as before; a stylus can go thinner (light touch) or
+        // thicker (hard press) than the base brush size.
+        let rawPressure = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0.5;
+
+        // Discard the very first contact sample — many digitizers report a
+        // brief, unreliable pressure spike right at touch-down — and use a
+        // neutral value for it instead. Every sample after that is smoothed
+        // (rather than applied instantly) so pressure eases in instead of
+        // jumping, giving a natural taper rather than sudden width changes.
+        if (this._firstPressureSample) {
+            rawPressure = 0.5;
+            this._firstPressureSample = false;
+            this._smoothedPressure = rawPressure;
+        } else {
+            this._smoothedPressure += (rawPressure - this._smoothedPressure) * 0.3;
+        }
+        const pressure = this._smoothedPressure;
+        const pressureWidth = Math.max(1, brushSize * (0.4 + pressure * 1.2));
+
+        // Straight-line mode: while Shift is held, continuously redraw a single
+        // straight line from the anchor point to the current cursor position
+        // instead of baking every jittery mouse-move segment permanently.
+        if (this.shiftKey) {
+            ctx.putImageData(this._strokeSnapshot, 0, 0);
+            ctx.beginPath();
+            ctx.moveTo(this.straightLineAnchor.x, this.straightLineAnchor.y);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = brushColor;
+            ctx.lineWidth = pressureWidth;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            this.lastPos = { x, y };
+            this._render();
+            return;
+        }
+
         switch(brushType) {
             case '1':
-                ctx.beginPath();
-                ctx.moveTo(this.lastPos.x, this.lastPos.y);
-                ctx.lineTo(x, y);
-                ctx.strokeStyle =  brushColor;
-                ctx.lineWidth = brushSize;
-                ctx.lineCap = 'round';
-                ctx.stroke();
+            case '2': {
+                // Smooth the freehand line by drawing a quadratic curve through the
+                // midpoints of the last 3 points, instead of a straight segment per
+                // mouse-move (which is what makes hand tremor look jagged/faceted).
+                this._smoothPoints.push({ x, y });
+                if (this._smoothPoints.length > 3) this._smoothPoints.shift();
+
+                ctx.strokeStyle = brushColor;
+                ctx.lineWidth = pressureWidth;
+                ctx.lineCap = brushType === '1' ? 'round' : 'square';
+                ctx.lineJoin = 'round';
+
+                if (this._smoothPoints.length === 3) {
+                    const [p0, p1, p2] = this._smoothPoints;
+                    const mid1 = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+                    const mid2 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                    ctx.beginPath();
+                    ctx.moveTo(mid1.x, mid1.y);
+                    ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
+                    ctx.stroke();
+                } else {
+                    // Not enough points buffered yet (start of stroke) — draw a
+                    // straight segment so the line starts immediately, no lag.
+                    ctx.beginPath();
+                    ctx.moveTo(this.lastPos.x, this.lastPos.y);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                }
             break;
-            case '2':
-                ctx.beginPath();
-                ctx.moveTo(this.lastPos.x, this.lastPos.y);
-                ctx.lineTo(x, y);
-                ctx.strokeStyle =  brushColor;
-                ctx.lineWidth = brushSize;
-                ctx.lineCap = 'square';
-                ctx.stroke();
-            break;
+            }
             case '3':
             ctx.fillStyle = brushColor;
             for (let i = 0; i <  brushSize; i++) {
@@ -1430,6 +1516,9 @@
     stopDrawing() {
         this.saveState();
         this.isDrawing = false;
+        this._strokeSnapshot = null;
+        this.straightLineAnchor = null;
+        this._smoothPoints = null;
         this._render();
     }
 
@@ -2591,6 +2680,9 @@
 
         const cv = this.mainCanvas;
         cv.addEventListener('contextmenu', e => e.preventDefault());
+        // touch-action: none lets the browser hand touch/pen input straight to us
+        // as pointer events instead of trying to scroll/zoom the page with it.
+        cv.style.touchAction = 'none';
 
         // Align canvas?
         let align = document.getElementById('align-canvas');
@@ -2648,7 +2740,28 @@
         allElements1.forEach(element => {
             element.style.color = '#fff';
         });
-
+      
+        // Show tabs horizontal?
+        let toolboxtab = document.getElementById('ux-tabs');
+        toolboxtab.addEventListener('click', (e) => {
+            let tabs = document.getElementById('ux-tabs');
+                if(tabs.checked == true) {
+                let select = document.getElementById('tabs');
+                let selecttabs = document.getElementById('tab-bar');
+                select.style.display = 'flex';
+                selecttabs.style.position = '';
+                selecttabs.style.left = '';
+                selecttabs.style.top = '';
+                } else {
+                let select = document.getElementById('tabs');
+                let selecttabs = document.getElementById('tab-bar');
+                select.style.display = 'inline';
+                selecttabs.style.position = 'absolute';
+                selecttabs.style.left = '104px';
+                selecttabs.style.top = '86px';
+                }  
+        });
+        
         // Show toolbox?
         let toolbox = document.getElementById('show-toolbox');
         toolbox.addEventListener('click', (e) => {
@@ -2682,7 +2795,7 @@
             }
         });
 
-        cv.addEventListener('mouseup', e=> {
+        cv.addEventListener('pointerup', e=> {
                 switch (this.tool) {
                     case 'brush':
                     this.stopDrawing();
@@ -2694,10 +2807,10 @@
             this._render();
         });
 
-        cv.addEventListener('mousemove', e=> {
+        cv.addEventListener('pointermove', e=> {
                 switch (this.tool) {
                     case 'brush':
-                        if (e.button !== 0) return;
+                        if (e.buttons !== undefined ? !(e.buttons & 1) : e.button !== 0) return;
                         const {x, y} = this._canvasXY(e);
                         this.draw(e,x,y);
                     break;
@@ -2705,7 +2818,7 @@
             }
         );
 
-        cv.addEventListener('mousedown', e => {
+        cv.addEventListener('pointerdown', e => {
         const {x, y} = this._canvasXY(e);
         
         /* Middle mouse = drag active layer */
@@ -2722,6 +2835,7 @@
         switch (this.tool) {
         case 'brush':
             this._ensureLayerFlattened(this.activeLayer);
+            cv.setPointerCapture(e.pointerId);
             this.startDrawing(e,x,y);
         break;
         case 'select':
@@ -2800,7 +2914,7 @@
     }
     });
 
-    cv.addEventListener('mousemove', e => {
+    cv.addEventListener('pointermove', e => {
     const { x, y } = this._canvasXY(e);
     document.getElementById('statusCoords').textContent =
     `X: ${Math.round(x)}  Y: ${Math.round(y)}`;
@@ -2836,7 +2950,7 @@
 
     });
 
-    cv.addEventListener('mouseup', e => {
+    cv.addEventListener('pointerup', e => {
         if (this.dragLayer) {
             this.dragLayer = null;
             this.mainCanvas.style.cursor = 'crosshair';
@@ -2865,9 +2979,12 @@
             this._stopContinuousRotate();
         }
         
+        if (cv.hasPointerCapture && cv.hasPointerCapture(e.pointerId)) {
+            cv.releasePointerCapture(e.pointerId);
+        }
     });
 
-    cv.addEventListener('mousedown', e => {
+    cv.addEventListener('pointerdown', e => {
         if(e.button === 2) {
             if (this.tool === 'rotate') {
                 this._startContinuousRotate('right');
@@ -2875,7 +2992,7 @@
         }
     });
     
-    cv.addEventListener('mouseleave', e => {
+    cv.addEventListener('pointerleave', e => {
             if (this.dragLayer) {
                 this.dragLayer = null;
                 this.mainCanvas.style.cursor = 'crosshair';
@@ -4095,6 +4212,16 @@
     }
 
     _bindKeys() {
+
+        // Track Shift state globally so the brush can switch into straight-line mode
+        // at any point during a stroke (pressed or released mid-drag).
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Shift') this.shiftKey = true;
+        });
+        document.addEventListener('keyup', e => {
+            if (e.key === 'Shift') this.shiftKey = false;
+        });
+        window.addEventListener('blur', () => { this.shiftKey = false; });
 
         document.addEventListener('keydown', e => {
         
