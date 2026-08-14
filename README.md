@@ -4,7 +4,7 @@
 
 [![Try it live](https://img.shields.io/badge/Try%20it-Live-brightgreen)](https://flaneurette.github.io/Graphia/)
 
-A minimalist graphic photo editor to edit and create images. 4000+ lines of JavaScript code, makes it very portable. Has the most used functions, for simplicity:
+A minimalist graphic photo editor to edit and create images, withs drawing tablet support. 4000+ lines of JavaScript code, makes it very portable. Has the most used functions, for simplicity:
 
 Image support:
 
