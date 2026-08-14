@@ -690,7 +690,7 @@
     <span id="statusTool">Tool: Pointer</span>
     <span id="statusCoords">X: 0  Y: 0</span>
     <span id="statusSize">Canvas: 1200 × 700</span>
-    <span id="statusLayer">Layer: —</span>
+    <span id="statusLayer">Layer: -</span>
     <span id="statusRotate"></span>
     <span id="statusZoom">Zoom: 100%</span>
     </div>
@@ -902,7 +902,7 @@
             this.layers    = [];
             this.activeIdx = -1;
 
-            // Documents (tabs) — each tab is an independent canvas/document
+            // Documents (tabs) - each tab is an independent canvas/document
             this.documents    = [];
             this.activeDocIdx = -1;
             this.docCount     = 0;
@@ -3055,7 +3055,7 @@
             if (err.name === 'NotAllowedError') {
                 statusEl.textContent = 'Permission denied.';
             } else if (err.name === 'SecurityError') {
-                statusEl.textContent = 'Blocked — this page must be served over HTTPS or localhost.';
+                statusEl.textContent = 'Blocked - this page must be served over HTTPS or localhost.';
             } else {
                 statusEl.textContent = 'Could not read system fonts: ' + err.message;
             }
@@ -3374,7 +3374,7 @@
             return;
         }
 
-        // No selection — fill the whole layer.
+        // No selection - fill the whole layer.
         l.ctx.save();
         l.ctx.globalCompositeOperation = 'source-over';
         l.ctx.fillStyle = this.color;
@@ -4297,7 +4297,7 @@
 
     _updateStatus() {
         const l = this.activeLayer;
-    document.getElementById('statusLayer').textContent = l ? `Layer: ${l.name}` : 'Layer: —';
+    document.getElementById('statusLayer').textContent = l ? `Layer: ${l.name}` : 'Layer: -';
     document.getElementById('statusRotate').textContent = this.rotateInterval
     ? `Rotation: ${Math.round((this.activeLayer?.rotation || 0) * 180 / Math.PI)}°`
     : '';
