@@ -145,7 +145,7 @@ Apply any of the following to the active layer:
 
 No installation required - Graphia is a single self-contained HTML file.
 
-1. Open `index.html` in a modern browser (Chrome, Edge, or Firefox recommended).
+1. Open `index.html` in a modern browser (Chrome, Edge, or Firefox). Note: Firefox does not support anything else but PNG export!
 2. Pick a tool from the toolbox on the left.
 3. Start a new canvas at a preset size, or open/import an existing image.
 
