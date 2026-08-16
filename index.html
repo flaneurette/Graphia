@@ -225,7 +225,7 @@
         height: 34px; border: none; cursor: pointer; background: none;
     }
     #tb-eraser {
-        padding-top:4px;
+        padding-top:3px;
         font-size: 13px;
     }
     #tb-fill {
@@ -233,7 +233,7 @@
     }
     #tb-circle {
         padding-top: 2px;
-        padding-left: 2px;
+        padding-left: 0px;
     }
     #align-canvas, #show-toolbox, #preview-canvas {
         margin-right:12px;
@@ -297,7 +297,6 @@
         color: #ddd;
         outline: none;
         margin: 10px;
-        margin-bottom: 20px;
         font-size: 14px;
     }
     
@@ -457,8 +456,8 @@
         <input type="text" id="eraser-dock-size" value="5">
         </div>
         <div class="dock-item" data-tool="fill"  title="Fill (F)">Fill</div>
-        <div id="dock-fill"><br />
-            <label>Color: </label><input type="color" id="dock-fill-picker" class="color-picker" value="#000000">
+        <div id="dock-fill">
+            <label>Color: </label><br /><input type="color" id="dock-fill-picker" class="color-picker" value="#000000">
         </div>
         <div class="dock-item" data-tool="text" title="Text (T)">Text</div>
         <div class="dock-item" data-tool="rotate" title="Rotate Layer (R)">Rotate</div>
