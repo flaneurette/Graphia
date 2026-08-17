@@ -1,6 +1,6 @@
 # Graphia Photo editor
 
-<img src="Screen.png" />
+<img src="Screenshot.png" />
 
 [![Try it live](https://img.shields.io/badge/Try%20it-Live-brightgreen)](https://flaneurette.github.io/Graphia/)
 
@@ -153,8 +153,3 @@ No installation required - Graphia is a single self-contained HTML file.
 
 Built on standard HTML5 Canvas, Pointer Events, and File APIs. Works in any current Chromium-based browser or Firefox. Font detection is Chrome/Edge only (relies on the Local Font Access API). AVIF export depends on your browser's canvas encoder support.
 
-## Tech notes
-
-- No frameworks or build tooling - vanilla JS, a single `<canvas>` element per layer, composited on render.
-- Freehand strokes are smoothed client-side via quadratic-curve interpolation over a 3-point rolling buffer; this is purely a rendering technique and doesn't store stroke vector data for later editing.
-- Straight-line mode restores a pixel snapshot of the layer taken at the start of the current segment, then redraws the line on every pointer move - this keeps the live preview accurate without permanently baking in intermediate frames.
