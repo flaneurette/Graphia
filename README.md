@@ -28,7 +28,7 @@ Menu:
 - Rotate layers (left/right mouse button to rotate direction, snaps into place at certain angles)
 - Canvas resizer
 - Various standard effects/filters: blur, saturate, neon, hue, contrast, noise, etc.
-- Custom Fabrik filters (folded paper, fine grain, rice paper, confetti, etc.)
+- Custom Fabrik filters (folded paper, fine grain, rice paper, confetti, etc.) 
 
 Right menu:
 
