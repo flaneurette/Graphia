@@ -566,6 +566,12 @@
         <option value="cosine">Cosine</option>
         <option value="square">Square</option>
         <option value="sawtooth">Sawtooth</option>
+        <option value="waves2">Art: Sine waves</option>
+        <option value="tangent2">Art: Tangent</option>
+        <option value="cosine2">Art: Cosine</option>
+        <option value="square2">Art: Square</option>
+        <option value="sawtooth2">Art: Sawtooth</option>
+        
     </select>
     <!-- <button class="tb-btn" id="btnEffectsEditor" title="Open effect editor">Effect editor</button> -->
     <button class="tb-btn" id="regenerate" onclick="Editor._effects();" title="Apply or regenerate layer effect">Apply</button> 
@@ -3209,6 +3215,24 @@
             case 'sawtooth':
             this._waves(layer, 'sawtooth', 25, 0.03);
             break;
+            case 'waves2':
+            this._waves(layer, 'sin2', 10, 0.05);
+            break;
+            case 'sine2':
+            this._waves(layer, 'sin2', 15, 0.04);
+            break;
+            case 'tangent2':
+            this._waves(layer, 'tan2', 25, 0.03);
+            break;
+            case 'cosine2':
+            this._waves(layer, 'cos2', 20, 0.05);
+            break;
+            case 'square2':
+            this._waves(layer, 'square2', 30, 0.02);
+            break;
+            case 'sawtooth2':
+            this._waves(layer, 'sawtooth2', 25, 0.03);
+            break;
         }
         
         this._render();
@@ -3691,31 +3715,64 @@
                 
                 l.ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                for (let y = 0; y < canvas.height; y++) {
+                for (let y = 0; y < canvas.width; y++) {
                     let waveOffset;
+                    let showMethod;
                     switch(method) {
                         case 'tan':
                         waveOffset = Math.tan(y * frequency) * amplitude;
                         // Clamp extreme values
                         waveOffset = Math.min(Math.max(waveOffset, -maxOffset), maxOffset);
+                        showMethod = 1;
                         break;
                         case 'cos':
                         waveOffset = Math.cos(y * frequency) * amplitude;
+                        showMethod = 1;
                         break;
                         case 'square':
                         waveOffset = (Math.sin(y * frequency * 2) > 0 ? 1 : -1) * amplitude;
+                        showMethod = 1;
                         break;
                         case 'sawtooth':
                         waveOffset = (y * frequency % 1) * amplitude * 2 - amplitude;
+                        showMethod = 1;
+                        break;
+                        case 'tan2':
+                        waveOffset = Math.tan(y * frequency) * amplitude;
+                        // Clamp extreme values
+                        waveOffset = Math.min(Math.max(waveOffset, -maxOffset), maxOffset);
+                        showMethod = 2;
+                        break;
+                        case 'cos2':
+                        waveOffset = Math.cos(y * frequency) * amplitude;
+                        showMethod = 2;
+                        break;
+                        case 'square2':
+                        waveOffset = (Math.sin(y * frequency * 2) > 0 ? 1 : -1) * amplitude;
+                        showMethod = 2;
+                        break;
+                        case 'sawtooth2':
+                        waveOffset = (y * frequency % 1) * amplitude * 2 - amplitude;
+                        showMethod = 2;
+                        break;
+                        case 'sin2':
+                        waveOffset = Math.sin(y * frequency) * amplitude;
+                        showMethod = 2;
                         break;
                         default: // 'sin'
                         waveOffset = Math.sin(y * frequency) * amplitude;
+                        showMethod = 1;
                     }
                     
-                    for (let x = 0; x < canvas.height; x++) {
+                    for (let x = 0; x < canvas.width; x++) {
                         const srcX = x + waveOffset;
-                        if (srcX >= 0 && srcX < canvas.height) {
-                            l.ctx.drawImage(tempCanvas, srcX, y, 1, 1, x, y, 1, 1);
+                        if (srcX >= 0 && srcX < canvas.width) {
+                            if(showMethod == 1) { 
+                            l.ctx.drawImage(tempCanvas, y, srcX, 1, 1, y, x, 1, 1);
+                            } else {
+                            // creative reverse the x,y
+                            l.ctx.drawImage(tempCanvas, y, srcX, 1, 1, x, y, 1, 1);
+                            }
                         }
                     }
                 }
